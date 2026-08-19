@@ -1,5 +1,5 @@
 {
-  "updated_at": "19:39",
+  "updated_at": "19:50",
   "youtube_id": "hsVn1930G5M",
   "rates": [
     {
@@ -22,5 +22,6 @@
       "buy": "1.16",
       "sell": "1.17"
     }
-  ]
+  ],
+  "music_paused": true
 }
