@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>MetaTransfer — Курси валют</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,6 +37,8 @@
   --lens-w:clamp(230px,21vw,430px);
   --lens-h:clamp(78px,9.4vh,152px);
   --lens-r:clamp(26px,2.6vw,54px);
+  --mag:1.5;                                   /* у скільки разів лінза збільшує */
+  --hole:calc(var(--lens-w) / var(--mag));     /* саме цей шматок рядка «забирає» лінза */
 }
 
 /* Справжнє заломлення: SVG-фільтр гне фон за склом. Вмикаємо лише там, де браузер
@@ -226,9 +230,21 @@ main.dense .title{display:none}          /* від 7 валют підпис п�
              inset 0 2px 16px rgba(255,255,255,.14),
              inset 0 -12px 26px rgba(0,0,0,.2)}
 
+/* Маска рядка: розмиті краї + ДІРКА рівно там, звідки лінза бере текст.
+   Тому напис не проходить під склом і не двоїться — він зникає біля лінзи
+   і тієї ж миті з'являється в ній, збільшений. Як під справжньою лупою. */
 .tclip{position:absolute;inset:0;overflow:hidden;border-radius:inherit;
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
-  mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 5%,
+    #000 calc(50% - var(--hole)/2),transparent calc(50% - var(--hole)/2),
+    transparent calc(50% + var(--hole)/2),#000 calc(50% + var(--hole)/2),
+    #000 95%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 5%,
+    #000 calc(50% - var(--hole)/2),transparent calc(50% - var(--hole)/2),
+    transparent calc(50% + var(--hole)/2),#000 calc(50% + var(--hole)/2),
+    #000 95%,transparent 100%)}
+/* якщо лінзу вимкнули — дірку прибираємо, інакше в рядку буде пропуск */
+.nolens .tclip{-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
 
 .track{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;
   gap:clamp(26px,2.6vw,56px);width:max-content;padding-left:clamp(26px,2.6vw,56px);
@@ -250,13 +266,12 @@ main.dense .title{display:none}          /* від 7 валют підпис п�
   box-shadow:0 26px 64px rgba(0,0,0,.6),
              inset 0 2px 14px rgba(255,255,255,.3),
              inset 0 -14px 32px rgba(0,0,0,.42);
-  /* Сильне заломлення знизу: текст під лінзою вигинається до нечитабельного,
-     тому дублікату не видно, а зверху лягає чітка збільшена копія. */
-  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,rgba(255,255,255,.07)),
-             rgba(22,19,34,.8);
+  /* Фон тепер прозорий: під лінзою в рядку дірка, ховати нічого не треба —
+     тому це справжнє скло, а не заглушка. */
+  background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 45%,rgba(255,255,255,.09));
   -webkit-backdrop-filter:var(--lens-fx);backdrop-filter:var(--lens-fx)}
 /* stage повторює геометрію рядка й масштабується від центру лінзи */
-.stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.5);
+.stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--mag));
   transform-origin:center;overflow:hidden}
 /* хроматична кайма — щоб скло виглядало «справжнім» */
 /* заломлення по краю лінзи — м'яке світло й ледь помітна хроматика, без обведення */
@@ -326,9 +341,6 @@ body.lite{
 }
 .lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn,
 .lite .dot,.lite .edge{animation:none}                     /* тло й відблиски застигають */
-.lite .lens{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,
-            rgba(255,255,255,.07)),rgba(22,19,34,.96)}      /* без розмиття текст під нею треба закрити */
-.lite .tclip{-webkit-mask-image:none;mask-image:none}       /* маска рухомого шару — щокадрова робота */
 .lite .flash{animation:flashLite 1.2s ease-out}             /* спалах без масштабування */
 @keyframes flashLite{0%{opacity:.4}100%{opacity:1}}
 .nolens .lens{display:none}                                 /* ?nolens=1 — якщо стрічка все одно рветься */
@@ -411,6 +423,7 @@ body.lite{
 /* ====================================================================
    1. Налаштування
    ==================================================================== */
+const VERSION     = '2026-08-19b'; // видно в ?debug=1 — щоб зрозуміти, чи не кеш
 const REFRESH_MS  = 30000;   // як часто перечитувати rates.json
 const MARKET_MS   = 180000;  // як часто оновлювати бігучий рядок (3 хв)
 const SHOWCASE_MS = 15000;   // раз на скільки «перекручувати» цифри
@@ -465,7 +478,8 @@ if(!(pinned >= 1 && pinned <= 3) || DEBUG){
 
       if(DEBUG){
         document.getElementById('debug').textContent =
-          'fps ' + fps.toFixed(0) + ' · режим ' + tier +
+          'fps ' + fps.toFixed(0) + ' · режим ' + tier + ' · v' + VERSION +
+          (musicPaused ? ' · музика на паузі' : '') +
           (now < started + WARMUP_MS ? ' · прогрів' : '');
       }
 
@@ -892,6 +906,34 @@ function startMusic(){
 ['click','touchstart','keydown','pointerdown'].forEach(event=>{
   document.addEventListener(event, startMusic, {passive:true});
 });
+
+/* ====================================================================
+   Самооновлення сторінки
+   Телевізори кешують html надовго й показують стару версію навіть після
+   заливки нової. Тому сторінка сама перевіряє, чи не вийшло оновлення,
+   і перезавантажується — вручну міняти адресу не треба.
+   ==================================================================== */
+async function checkForUpdate(){
+  try{
+    const resp = await fetch('index.html?_=' + Date.now(), {cache:'no-store'});
+    if(!resp.ok) return;
+    const html = await resp.text();
+    const found = html.match(/VERSION\s*=\s*'([^']+)'/);
+    if(!found || found[1] === VERSION) return;
+
+    // Перезавантажуємось рівно один раз на кожну нову версію — щоб не зациклитись.
+    let already = null;
+    try{ already = sessionStorage.getItem('reloadedTo'); }catch(err){}
+    if(already === found[1]) return;
+    try{ sessionStorage.setItem('reloadedTo', found[1]); }catch(err){}
+
+    const query = new URLSearchParams(location.search);
+    query.set('_', Date.now());          // нова адреса = гарантовано свіжа сторінка
+    location.replace(location.pathname + '?' + query.toString());
+  }catch(err){ /* немає мережі — просто спробуємо наступного разу */ }
+}
+setTimeout(checkForUpdate, 20000);
+setInterval(checkForUpdate, 600000);     // далі раз на 10 хвилин
 
 /* Не даємо ТВ-браузеру заснути на статичній сторінці */
 if('wakeLock' in navigator){
