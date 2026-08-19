@@ -312,12 +312,22 @@ body.tier2{
 .tier2 .blob{filter:blur(70px);animation-duration:70s}
 .tier2 .row::after{display:none}
 
+/* Режим для вбудованих браузерів телевізорів: усе статичне, рухається лише
+   бігучий рядок. Решту ресурсів віддаємо йому й музиці. */
 body.lite{--glass-fx:none;--lens-fx:none;--badge-fx:none}
-.lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn{animation:none}
+.lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn,
+.lite .dot,.lite .edge{animation:none}
 .lite .sheen,.lite .shard,.lite .grain{display:none}
 .lite .row,.lite .ticker{background:rgba(255,255,255,.08)}
-.lite .lens{background:rgba(22,19,34,.97)}   /* без розмиття текст під лінзою треба закрити */
 .lite .badge{box-shadow:inset 0 2px 8px rgba(255,255,255,.4),0 8px 20px rgba(0,0,0,.4)}
+/* лінза — це друга копія рядка, що рухається, плюс скруглене обрізання:
+   найдорожче місце в стрічці, тому на слабких ТВ прибираємо */
+.lite .lens{display:none}
+/* маска країв теж перемальовується щокадру разом із рядком */
+.lite .tclip{-webkit-mask-image:none;mask-image:none}
+/* спалах зміни курсу — без масштабування, лише яскравість */
+.lite .flash{animation:flashLite 1.2s ease-out}
+@keyframes flashLite{0%{opacity:.35}100%{opacity:1}}
 
 @media (max-width:900px){
   .legend,.row{grid-template-columns:1.1fr 1fr 1fr}
@@ -513,47 +523,62 @@ tick(); setInterval(tick,20000);
    ==================================================================== */
 const DIGITS = '0123456789';
 
-function roll(el, finalText, delay){
-  if(el.dataset.rolling === '1') return;
-  const target = String(finalText);
-  const chars  = target.split('');
-  const hasDigits = /\d/.test(target);
-  if(!hasDigits){ el.textContent = target; return; }
+/* Один спільний таймер на всі числа. Раніше кожне значення крутило власний
+   інтервал — десяток таймерів по 45 мс разом давали ривки бігучого рядка
+   на слабких телевізорах. Тепер це один прохід по списку за крок. */
+const rolling = new Map();
+let rollTimer = null;
 
-  el.dataset.rolling = '1';
-  setTimeout(()=>{
-    el.classList.add('rolling');
-    let frame = 0;
-    const spins = 16;                       // скільки кадрів крутиться
-    const timer = setInterval(()=>{
-      frame++;
-      el.textContent = chars.map((ch,i)=>{
-        if(!/\d/.test(ch)) return ch;       // «%», «.», «+», «-» лишаються на місці
-        // цифри зупиняються по черзі — зліва направо
-        return frame >= spins*0.45 + i*2 ? ch : DIGITS[Math.random()*10|0];
-      }).join('');
-      if(frame >= spins + chars.length*2){
-        clearInterval(timer);
-        el.textContent = target;
-        el.classList.remove('rolling');
-        el.dataset.rolling = '0';
-        if(el.dataset.arrow){                // стрілку повертаємо після прокрутки
-          const arrow = document.createElement('span');
-          arrow.className = 'arrow ' + el.dataset.arrow;
-          arrow.textContent = el.dataset.arrow === 'up' ? '▲' : '▼';
-          el.appendChild(arrow);
-          el.dataset.arrow = '';
-        }
-      }
-    }, 45);
-  }, delay || 0);
+function finishRoll(el, state){
+  el.textContent = state.target;
+  el.classList.remove('rolling');
+  rolling.delete(el);
+  if(el.dataset.arrow){                 // стрілку повертаємо після прокрутки
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow ' + el.dataset.arrow;
+    arrow.textContent = el.dataset.arrow === 'up' ? '▲' : '▼';
+    el.appendChild(arrow);
+    el.dataset.arrow = '';
+  }
+}
+
+function rollStep(){
+  const now = performance.now();
+  rolling.forEach((state, el)=>{
+    if(now < state.start) return;       // це число ще чекає своєї черги
+    state.frame++;
+    el.textContent = state.chars.map((ch, i)=>{
+      if(!/\d/.test(ch)) return ch;     // «%», «.», «+», «-» лишаються на місці
+      // цифри зупиняються по черзі — зліва направо
+      return state.frame >= state.spins * 0.45 + i * 1.6 ? ch : DIGITS[Math.random() * 10 | 0];
+    }).join('');
+    if(state.frame >= state.spins + state.chars.length * 1.6) finishRoll(el, state);
+  });
+  if(!rolling.size){ clearInterval(rollTimer); rollTimer = null; }
+}
+
+function roll(el, finalText, delay){
+  const target = String(finalText);
+  if(!/\d/.test(target)){ el.textContent = target; return; }
+  if(rolling.has(el)) return;
+
+  el.classList.add('rolling');
+  rolling.set(el, {
+    target: target,
+    chars: target.split(''),
+    frame: 0,
+    spins: tier === 1 ? 7 : 16,         // на слабких ТВ крутимо коротше
+    start: performance.now() + (delay || 0),
+  });
+  if(!rollTimer) rollTimer = setInterval(rollStep, tier === 1 ? 110 : 45);
 }
 
 /* раз на SHOWCASE_MS проганяємо всі значення + хвиля блиску по картках */
 function showcase(){
   const rows = [...rowsEl.children];
   rows.forEach((row,index)=>{
-    setTimeout(()=>{
+    // Блиск і підсвітка контуру — тільки там, де телевізор це тягне.
+    if(tier > 1) setTimeout(()=>{
       row.classList.add('pulse');
       setTimeout(()=>row.classList.remove('pulse'),1300);
     }, index*120);
