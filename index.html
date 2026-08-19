@@ -312,22 +312,23 @@ body.tier2{
 .tier2 .blob{filter:blur(70px);animation-duration:70s}
 .tier2 .row::after{display:none}
 
-/* Режим для вбудованих браузерів телевізорів: усе статичне, рухається лише
-   бігучий рядок. Решту ресурсів віддаємо йому й музиці. */
-body.lite{--glass-fx:none;--lens-fx:none;--badge-fx:none}
+/* Режим для вбудованих браузерів телевізорів (Sony тощо).
+   Скло лишається — воно дешеве, поки фон за ним нерухомий: браузер рахує
+   розмиття один раз і далі бере готове. Прибираємо саме РУХ: анімацію тла,
+   відблиски, підсвітки. Лишається бігуча стрічка й прокрутка цифр. */
+body.lite{
+  --glass-fx:blur(14px) saturate(180%) brightness(1.1);   /* без заломлення: SVG-фільтр ТВ не тягне */
+  --lens-fx:none;                                          /* лінза лишається, але без фільтра */
+  --badge-fx:none;
+}
 .lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn,
-.lite .dot,.lite .edge{animation:none}
-.lite .sheen,.lite .shard,.lite .grain{display:none}
-.lite .row,.lite .ticker{background:rgba(255,255,255,.08)}
-.lite .badge{box-shadow:inset 0 2px 8px rgba(255,255,255,.4),0 8px 20px rgba(0,0,0,.4)}
-/* лінза — це друга копія рядка, що рухається, плюс скруглене обрізання:
-   найдорожче місце в стрічці, тому на слабких ТВ прибираємо */
-.lite .lens{display:none}
-/* маска країв теж перемальовується щокадру разом із рядком */
-.lite .tclip{-webkit-mask-image:none;mask-image:none}
-/* спалах зміни курсу — без масштабування, лише яскравість */
-.lite .flash{animation:flashLite 1.2s ease-out}
-@keyframes flashLite{0%{opacity:.35}100%{opacity:1}}
+.lite .dot,.lite .edge{animation:none}                     /* тло й відблиски застигають */
+.lite .lens{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,
+            rgba(255,255,255,.07)),rgba(22,19,34,.96)}      /* без розмиття текст під нею треба закрити */
+.lite .tclip{-webkit-mask-image:none;mask-image:none}       /* маска рухомого шару — щокадрова робота */
+.lite .flash{animation:flashLite 1.2s ease-out}             /* спалах без масштабування */
+@keyframes flashLite{0%{opacity:.4}100%{opacity:1}}
+.nolens .lens{display:none}                                 /* ?nolens=1 — якщо стрічка все одно рветься */
 
 @media (max-width:900px){
   .legend,.row{grid-template-columns:1.1fr 1fr 1fr}
@@ -432,6 +433,7 @@ function setTier(next){
 
 const DEBUG = params.get('debug') === '1';
 if(DEBUG) document.body.classList.add('debug');
+if(params.get('nolens') === '1') document.body.classList.add('nolens');
 
 /* Ручне закріплення режиму: ?tier=1|2|3 (?lite=1 і ?full=1 лишились для сумісності) */
 let pinned = parseInt(params.get('tier'), 10);
