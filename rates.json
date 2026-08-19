@@ -21,5 +21,6 @@
       "buy": "1.16",
       "sell": "1.17"
     }
-  ]
+  ],
+  "music_paused": true
 }
