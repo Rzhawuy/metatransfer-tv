@@ -38,7 +38,9 @@
   --lens-h:clamp(78px,9.4vh,152px);
   --lens-r:clamp(26px,2.6vw,54px);
   --mag:1.5;                                   /* у скільки разів лінза збільшує */
-  --hole:calc(var(--lens-w) / var(--mag));     /* саме цей шматок рядка «забирає» лінза */
+  /* Дірка в рядку ширша за саму лінзу — щоб під її краями не визирав
+     дрібний текст поруч зі збільшеним. Більше значення = ширша пустота. */
+  --hole:calc(var(--lens-w) * 1.18);
 }
 
 /* Справжнє заломлення: SVG-фільтр гне фон за склом. Вмикаємо лише там, де браузер
@@ -423,7 +425,7 @@ body.lite{
 /* ====================================================================
    1. Налаштування
    ==================================================================== */
-const VERSION     = '2026-08-19b'; // видно в ?debug=1 — щоб зрозуміти, чи не кеш
+const VERSION     = '2026-08-19c'; // видно в ?debug=1 — щоб зрозуміти, чи не кеш
 const REFRESH_MS  = 30000;   // як часто перечитувати rates.json
 const MARKET_MS   = 180000;  // як часто оновлювати бігучий рядок (3 хв)
 const SHOWCASE_MS = 15000;   // раз на скільки «перекручувати» цифри
@@ -827,8 +829,17 @@ function syncMusic(data){
   if(paused !== musicPaused){
     musicPaused = paused;
     if(ready && player){
-      if(paused){ player.pauseVideo(); }
-      else{ player.playVideo(); hideStart(); }
+      try{
+        if(paused){
+          player.pauseVideo();
+          player.mute();                    // подвійна гарантія тиші
+        }else{
+          player.unMute();
+          player.setVolume(VOLUME);
+          player.playVideo();
+          hideStart();
+        }
+      }catch(err){ console.warn('плеєр не відповів:', err); }
     }
   }
 
@@ -857,7 +868,9 @@ function createPlayer(){
   player = new YT.Player('yt',{
     height:'1', width:'1',
     videoId: currentVideo || undefined,
-    playerVars:{autoplay:1, controls:0, disablekb:1, playsinline:1,
+    // autoplay вимикаємо, якщо стоїть пауза: інакше ютуб запуститься сам,
+    // повз наш код (на телевізорах автозапуск дозволений).
+    playerVars:{autoplay: musicPaused ? 0 : 1, controls:0, disablekb:1, playsinline:1,
                 list: currentList || undefined,
                 listType: currentList ? 'playlist' : undefined,
                 loop:1, playlist: currentList ? undefined : currentVideo},
@@ -868,11 +881,20 @@ function createPlayer(){
         // Нам потрібен лише звук — просимо найгіршу картинку, щоб не вантажити
         // декодер телевізора зайвим відео.
         try{ e.target.setPlaybackQuality('tiny'); }catch(err){}
-        if(musicPaused) return;            // бот поставив на паузу — не вмикаємо
+        if(musicPaused){                   // бот поставив на паузу
+          try{ e.target.pauseVideo(); }catch(err){}
+          return;
+        }
         e.target.playVideo();
         setTimeout(checkPlayback, 1800);   // браузери блокують звук без кліку
       },
       onStateChange:(e)=>{
+        // Головний запобіжник: якщо стоїть пауза, а плеєр усе одно заграв
+        // (сам ютуб, autoplay, автоперехід у плейлисті) — глушимо одразу.
+        if(musicPaused && e.data === YT.PlayerState.PLAYING){
+          try{ e.target.pauseVideo(); }catch(err){}
+          return;
+        }
         if(e.data === YT.PlayerState.ENDED && !currentList){
           e.target.seekTo(0); e.target.playVideo();     // безшовний цикл
         }
