@@ -202,6 +202,9 @@ main.dense .title{display:none}          /* від 7 валют підпис п�
   font-size:min(clamp(22px,3.3vw,70px),calc(var(--rowh) * .52));
   letter-spacing:-.02em;transition:color .4s;white-space:nowrap}
 .val.long{font-size:min(clamp(17px,2.2vw,46px),calc(var(--rowh) * .36))}
+/* одне значення на всю ширину рядка — коли замість курсів просто напис */
+.val.wide{grid-column:2 / span 2;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.2);
+  white-space:normal;line-height:1.1}
 .val.buy{color:#fff;text-shadow:0 0 30px rgba(255,255,255,.18)}
 .val.sell{color:var(--cobalt);text-shadow:0 0 34px rgba(0,229,255,.42)}
 .val.rolling{color:var(--cobalt);opacity:.85;filter:blur(.4px)}
@@ -596,7 +599,10 @@ setInterval(showcase, SHOWCASE_MS);
    ==================================================================== */
 function render(data){
   const list = Array.isArray(data.rates) ? data.rates.slice(0,10) : [];
-  const codes = list.map(item=>String(item.code||'').toUpperCase()).join(',');
+  // у підпис входить і вид рядка: пара курсів чи один напис — інакше при зміні
+  // виду картка не перебудується
+  const codes = list.map(item=>
+    String(item.code||'').toUpperCase() + (item.text ? ':t' : '')).join(',');
   const rebuild = codes !== rowsEl.dataset.codes;
 
   // від кількості валют залежать висота картки й розмір шрифтів
@@ -614,21 +620,28 @@ function render(data){
       const row  = document.createElement('section');
       row.className = 'row';
       row.style.animationDelay = (index*0.09)+'s';
+      const cells = item.text
+        ? '<div class="val wide" data-k="'+code+'-t"></div>'
+        : '<div class="val buy"  data-k="'+code+'-b"></div>'+
+          '<div class="val sell" data-k="'+code+'-s"></div>';
       row.innerHTML =
         '<span class="edge"></span>'+
         '<div class="cur"><span class="badge" style="--tint:rgba('+meta.c+',.20);--glow:rgba('+meta.c+',.35)">'+
           meta.s+'</span><div class="txt">'+
           '<div class="code">'+code+'</div><div class="title">'+meta.n+'</div></div></div>'+
-        '<div class="val buy"  data-k="'+code+'-b"></div>'+
-        '<div class="val sell" data-k="'+code+'-s"></div>';
+        cells;
       rowsEl.appendChild(row);
     });
   }
 
   list.forEach((item,index)=>{
     const code = String(item.code||'').toUpperCase();
-    put(code+'-b', item.buy,  index*110, rebuild);
-    put(code+'-s', item.sell, index*110 + 70, rebuild);
+    if(item.text){
+      put(code+'-t', item.text, index*110, rebuild);
+    }else{
+      put(code+'-b', item.buy,  index*110, rebuild);
+      put(code+'-s', item.sell, index*110 + 70, rebuild);
+    }
   });
 
   updEl.textContent = data.updated_at || '--:--';
@@ -790,10 +803,21 @@ loadMarket(); setInterval(loadMarket, MARKET_MS);
 /* ====================================================================
    5. Фонова музика з YouTube
    ==================================================================== */
-let player = null, ready = false;
+let player = null, ready = false, musicPaused = false;
 
 function syncMusic(data){
   if(!MUSIC_ON) return;
+
+  // Пауза з бота: у rates.json приходить music_paused
+  const paused = !!data.music_paused;
+  if(paused !== musicPaused){
+    musicPaused = paused;
+    if(ready && player){
+      if(paused){ player.pauseVideo(); }
+      else{ player.playVideo(); hideStart(); }
+    }
+  }
+
   const video = data.youtube_id || null;
   const list  = data.playlist_id || null;
   if(video === currentVideo && list === currentList) return;
@@ -802,6 +826,7 @@ function syncMusic(data){
   if(!ready){ bootPlayer(); return; }
   if(list) player.loadPlaylist({list:list, listType:'playlist'});
   else if(video) player.loadVideoById(video);
+  if(musicPaused) setTimeout(()=>player.pauseVideo(), 400);   // нове відео не вмикаємо
 }
 
 function bootPlayer(){
@@ -829,6 +854,7 @@ function createPlayer(){
         // Нам потрібен лише звук — просимо найгіршу картинку, щоб не вантажити
         // декодер телевізора зайвим відео.
         try{ e.target.setPlaybackQuality('tiny'); }catch(err){}
+        if(musicPaused) return;            // бот поставив на паузу — не вмикаємо
         e.target.playVideo();
         setTimeout(checkPlayback, 1800);   // браузери блокують звук без кліку
       },
@@ -848,7 +874,7 @@ function createPlayer(){
 
 const startEl = document.getElementById('start');
 function checkPlayback(){
-  if(!player || !player.getPlayerState) return;
+  if(!player || !player.getPlayerState || musicPaused) return;
   const state = player.getPlayerState();
   const muted = player.isMuted && player.isMuted();
   if(state !== YT.PlayerState.PLAYING || muted) startEl.classList.add('show');
@@ -858,7 +884,7 @@ function hideStart(){ startEl.classList.remove('show'); }
 /* Звук браузер дозволяє лише після дії людини. На телевізорі миші немає,
    тому ловимо будь-що: клік, дотик і будь-яку кнопку пульта. */
 function startMusic(){
-  if(!MUSIC_ON) return;
+  if(!MUSIC_ON || musicPaused) return;      // на паузі з бота — не оживляємо
   if(!player){ bootPlayer(); return; }
   try{ player.unMute(); player.setVolume(VOLUME); player.playVideo(); }catch(err){}
   hideStart();
