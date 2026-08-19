@@ -416,31 +416,57 @@ function setTier(next){
   tier = next;
   document.body.classList.toggle('tier2', tier === 2);
   document.body.classList.toggle('lite',  tier === 1);
+  try{ localStorage.setItem('tvTier', String(tier)); }catch(err){}
   console.info('graphics tier ->', tier);
 }
 
 const DEBUG = params.get('debug') === '1';
 if(DEBUG) document.body.classList.add('debug');
 
-if(params.get('lite') === '1'){
-  setTier(1);
+/* Ручне закріплення режиму: ?tier=1|2|3 (?lite=1 і ?full=1 лишились для сумісності) */
+let pinned = parseInt(params.get('tier'), 10);
+if(params.get('lite') === '1') pinned = 1;
+if(params.get('full') === '1') pinned = 3;
+
+if(pinned >= 1 && pinned <= 3){
+  setTier(pinned);
+}else{
+  // Починаємо з режиму, який цей телевізор уже витягував минулого разу.
+  const remembered = parseInt(localStorage.getItem('tvTier'), 10);
+  if(remembered >= 1 && remembered <= 3) setTier(remembered);
 }
-if(params.get('lite') !== '1' && params.get('full') !== '1' || DEBUG){
-  let frames = 0, mark = performance.now();
+
+if(!(pinned >= 1 && pinned <= 3) || DEBUG){
+  const WARMUP_MS = 7000;              // перші секунди не рахуємо: шрифти, ютуб, перший кадр
+  const started = performance.now();
+  let frames = 0, mark = started, bad = 0, good = 0;
+
   requestAnimationFrame(function fpsWatch(now){
     frames++;
     const span = now - mark;
     if(span >= 2500){
       const fps = frames * 1000 / span;
+      frames = 0; mark = now;
+
       if(DEBUG){
         document.getElementById('debug').textContent =
-          'fps ' + fps.toFixed(0) + ' · режим ' + tier;
+          'fps ' + fps.toFixed(0) + ' · режим ' + tier +
+          (now < started + WARMUP_MS ? ' · прогрів' : '');
       }
-      if(fps < 22 && params.get('full') !== '1' && params.get('lite') !== '1'){
-        setTier(tier === 3 ? 2 : 1);
+
+      // Рішення приймаємо лише після прогріву і лише за двома-трьома вимірами
+      // поспіль — щоб одна випадкова просадка не зривала картинку назавжди.
+      if(now > started + WARMUP_MS && !(pinned >= 1 && pinned <= 3)){
+        if(fps < 24){
+          bad++; good = 0;
+          if(bad >= 2 && tier > 1){ setTier(tier - 1); bad = 0; }
+        }else if(fps > 50){
+          good++; bad = 0;
+          if(good >= 3 && tier < 3){ setTier(tier + 1); good = 0; }
+        }else{
+          bad = 0; good = 0;
+        }
       }
-      frames = 0; mark = now;
-      if(tier === 1 && !DEBUG) return;   // нижче знижувати вже нікуди
     }
     requestAnimationFrame(fpsWatch);
   });
