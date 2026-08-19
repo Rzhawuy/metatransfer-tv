@@ -292,11 +292,32 @@ footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-betwe
 
 #yt{position:fixed;width:1px;height:1px;opacity:.001;pointer-events:none;bottom:0;left:0}
 
-/* ---------- Полегшений режим для слабких ТВ-браузерів (?lite=1) ---------- */
+/* лічильник кадрів для налаштування на самому телевізорі: ?debug=1 */
+#debug{position:fixed;left:8px;bottom:8px;z-index:50;display:none;
+  font:600 14px/1.4 'Space Grotesk',monospace;color:#0f0;background:rgba(0,0,0,.6);
+  padding:6px 10px;border-radius:8px}
+body.debug #debug{display:block}
+
+/* ---------- Ступені важкості ефектів ----------
+   Повний  — усе (потужний ПК/приставка);
+   tier2   — без заломлення, без дрібної анімації тла (середні пристрої);
+   lite    — взагалі без скляного розмиття, тло статичне (слабкі ТВ).
+   Ступінь підбирається автоматично за реальним FPS, див. скрипт нижче. */
+body.tier2{
+  --glass-fx:blur(16px) saturate(185%) brightness(1.12);
+  --lens-fx:blur(12px) saturate(160%);
+  --badge-fx:none;
+}
+.tier2 .sheen,.tier2 .shard{display:none}
+.tier2 .blob{filter:blur(70px);animation-duration:70s}
+.tier2 .row::after{display:none}
+
+body.lite{--glass-fx:none;--lens-fx:none;--badge-fx:none}
 .lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn{animation:none}
-.lite .row{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.07)}
-.lite .ticker{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.07)}
-.lite .grain{display:none}
+.lite .sheen,.lite .shard,.lite .grain{display:none}
+.lite .row,.lite .ticker{background:rgba(255,255,255,.08)}
+.lite .lens{background:rgba(22,19,34,.97)}   /* без розмиття текст під лінзою треба закрити */
+.lite .badge{box-shadow:inset 0 2px 8px rgba(255,255,255,.4),0 8px 20px rgba(0,0,0,.4)}
 
 @media (max-width:900px){
   .legend,.row{grid-template-columns:1.1fr 1fr 1fr}
@@ -370,6 +391,7 @@ footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-betwe
 
 <div id="start"><div class="btn"><span class="play">▶</span> Натисніть будь-яку кнопку — увімкнути музику</div></div>
 <div id="yt"></div>
+<div id="debug">fps —</div>
 
 <script>
 /* ====================================================================
@@ -382,7 +404,47 @@ const VOLUME      = 25;      // гучність фонової музики, 0.
 
 const params   = new URLSearchParams(location.search);
 const MUSIC_ON = params.get('nomusic') !== '1';
-if(params.get('lite') === '1') document.body.classList.add('lite');
+
+/* ---- Автопідбір важкості ефектів --------------------------------------
+   Скло із заломленням — найдорожча річ на сторінці: браузер щокадру копіює
+   те, що позаду кожної картки, і проганяє через фільтри. Слабкі ТВ цього не
+   тягнуть, тому міряємо реальний FPS і самі знімаємо ефекти, поки не поїде.
+   ?lite=1 — одразу найлегший режим, ?full=1 — нічого не знижувати.        */
+let tier = 3;
+function setTier(next){
+  if(next === tier) return;
+  tier = next;
+  document.body.classList.toggle('tier2', tier === 2);
+  document.body.classList.toggle('lite',  tier === 1);
+  console.info('graphics tier ->', tier);
+}
+
+const DEBUG = params.get('debug') === '1';
+if(DEBUG) document.body.classList.add('debug');
+
+if(params.get('lite') === '1'){
+  setTier(1);
+}
+if(params.get('lite') !== '1' && params.get('full') !== '1' || DEBUG){
+  let frames = 0, mark = performance.now();
+  requestAnimationFrame(function fpsWatch(now){
+    frames++;
+    const span = now - mark;
+    if(span >= 2500){
+      const fps = frames * 1000 / span;
+      if(DEBUG){
+        document.getElementById('debug').textContent =
+          'fps ' + fps.toFixed(0) + ' · режим ' + tier;
+      }
+      if(fps < 22 && params.get('full') !== '1' && params.get('lite') !== '1'){
+        setTier(tier === 3 ? 2 : 1);
+      }
+      frames = 0; mark = now;
+      if(tier === 1 && !DEBUG) return;   // нижче знижувати вже нікуди
+    }
+    requestAnimationFrame(fpsWatch);
+  });
+}
 
 /* s — символ у кружечку, n — підпис, c — колір підсвітки */
 const META = {
@@ -711,6 +773,9 @@ function createPlayer(){
       onReady:(e)=>{
         ready = true;
         e.target.setVolume(VOLUME);
+        // Нам потрібен лише звук — просимо найгіршу картинку, щоб не вантажити
+        // декодер телевізора зайвим відео.
+        try{ e.target.setPlaybackQuality('tiny'); }catch(err){}
         e.target.playVideo();
         setTimeout(checkPlayback, 1800);   // браузери блокують звук без кліку
       },
@@ -718,7 +783,10 @@ function createPlayer(){
         if(e.data === YT.PlayerState.ENDED && !currentList){
           e.target.seekTo(0); e.target.playVideo();     // безшовний цикл
         }
-        if(e.data === YT.PlayerState.PLAYING) hideStart();
+        if(e.data === YT.PlayerState.PLAYING){
+          hideStart();
+          try{ e.target.setPlaybackQuality('tiny'); }catch(err){}
+        }
       },
       onError:()=>{ console.warn('YouTube: відео недоступне'); }
     }
