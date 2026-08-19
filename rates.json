@@ -1,9 +1,21 @@
 {
-  "updated_at": "--:--",
-  "youtube_id": "jfKfPfyJRdk",
+  "updated_at": "15:17",
+  "youtube_id": "vFou0-qd8cU",
   "rates": [
-    {"code": "USD", "buy": "41.50", "sell": "41.90"},
-    {"code": "EUR", "buy": "45.10", "sell": "45.70"},
-    {"code": "USDT", "buy": "-2%", "sell": "+1.5%"}
+    {
+      "code": "USD",
+      "buy": "41.50",
+      "sell": "41.90"
+    },
+    {
+      "code": "EUR",
+      "buy": "45.10",
+      "sell": "45.70"
+    },
+    {
+      "code": "USDT",
+      "buy": "-2%",
+      "sell": "+1.5%"
+    }
   ]
 }
