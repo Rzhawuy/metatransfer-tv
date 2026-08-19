@@ -1,1 +1,1 @@
-# metatransfer-tv
+# metatransfer-tv Табло курсов MetaTransfer
