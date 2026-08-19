@@ -1,5 +1,5 @@
 {
-  "updated_at": "17:03",
+  "updated_at": "17:04",
   "youtube_id": "hsVn1930G5M",
   "rates": [
     {
@@ -16,6 +16,11 @@
       "code": "USDT",
       "buy": "-1.4%",
       "sell": "+0.8%"
+    },
+    {
+      "code": "EUR/USD",
+      "buy": "1.16",
+      "sell": "1.17"
     }
   ]
 }
