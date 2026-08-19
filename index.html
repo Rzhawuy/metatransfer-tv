@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaTransfer — Курси валют</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ======================================================================
+   MetaTransfer TV board
+   Палітра з брендбуку: cobalt #00E5FF, void #0A0A0C, platinum #E5E7EB
+   Параметри в адресі: ?nomusic=1 — без музики, ?lite=1 — легкий режим для слабких ТВ
+   ====================================================================== */
+:root{
+  --void:#0A0A0C;
+  --platinum:#E5E7EB;
+  --muted:#8B90A0;
+  --cobalt:#00E5FF;
+  --up:#34D399;
+  --down:#FB7185;
+
+  --glass-bg:linear-gradient(140deg,rgba(255,255,255,.11),rgba(255,255,255,.05) 38%,
+             rgba(255,255,255,.02) 68%,rgba(255,255,255,.07));
+  --glass-border:rgba(255,255,255,.06);
+  --glass-blur:5px;
+  /* Оптика скла: майже без матовості — насиченість і підсвітка того, що позаду.
+     Заломлення (url(#refract)) додається нижче, якщо браузер його підтримує. */
+  --glass-fx:blur(var(--glass-blur)) saturate(215%) brightness(1.16);
+  --lens-fx:blur(9px) saturate(180%);
+  --badge-fx:blur(4px) saturate(190%);
+  --r:28px;
+  --pad:clamp(18px,2.2vw,44px);
+  --lens-w:clamp(230px,21vw,430px);
+  --lens-h:clamp(78px,9.4vh,152px);
+  --lens-r:clamp(26px,2.6vw,54px);
+}
+
+/* Справжнє заломлення: SVG-фільтр гне фон за склом. Вмикаємо лише там, де браузер
+   вміє це в backdrop-filter — інакше лишається чиста «оптика» без викривлення. */
+@supports (backdrop-filter:url(#refract)) or (-webkit-backdrop-filter:url(#refract)){
+  :root{
+    --glass-fx:blur(var(--glass-blur)) saturate(215%) brightness(1.16) url(#refract);
+    --lens-fx:blur(9px) saturate(180%) url(#refract-lens);
+    --badge-fx:blur(4px) saturate(190%) url(#refract);
+  }
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+.filters{position:absolute;width:0;height:0;overflow:hidden}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--void);
+  color:var(--platinum);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- Іридесцентне тло ---------- */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;background:
+   radial-gradient(120% 90% at 50% 0%,#1B1030 0%,#0D0A16 45%,var(--void) 100%)}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;mix-blend-mode:screen;will-change:transform}
+.b1{width:52vw;height:52vw;left:-10vw;top:-14vw;background:radial-gradient(circle,#7C3AED,transparent 65%);animation:drift1 22s ease-in-out infinite}
+.b2{width:46vw;height:46vw;right:-8vw;top:-6vw;background:radial-gradient(circle,#00E5FF,transparent 65%);opacity:.35;animation:drift2 26s ease-in-out infinite}
+.b3{width:60vw;height:44vw;left:18vw;bottom:-22vw;background:radial-gradient(circle,#E040FB,transparent 65%);opacity:.34;animation:drift3 30s ease-in-out infinite}
+.b4{width:44vw;height:40vw;right:-6vw;bottom:-16vw;background:radial-gradient(circle,#4C1D95,transparent 68%);opacity:.5;animation:drift2 25s ease-in-out infinite reverse}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(8vw,7vh) scale(1.18)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-9vw,9vh) scale(.9)}}
+@keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,-8vh) scale(1.16)}}
+
+/* скляні друзки, що повільно літають — як на рендері бренду */
+.shard{position:absolute;border-radius:999px;opacity:.45;mix-blend-mode:screen;
+  background:linear-gradient(115deg,#22D3EE,#8B5CF6 35%,#E040FB 65%,#22D3EE);
+  box-shadow:0 18px 50px rgba(0,0,0,.5),inset 0 0 24px rgba(255,255,255,.55);
+  filter:blur(1px) saturate(160%);will-change:transform}
+.s1{width:15vw;height:2.6vw;left:6vw;top:16vh;animation:float1 24s ease-in-out infinite}
+.s2{width:9vw;height:2vw;right:12vw;top:10vh;animation:float2 19s ease-in-out infinite}
+.s3{width:19vw;height:3.1vw;right:4vw;bottom:14vh;animation:float3 29s ease-in-out infinite}
+.s4{width:6vw;height:1.5vw;left:26vw;bottom:8vh;animation:float2 22s ease-in-out infinite reverse}
+.s5{width:4vw;height:4vw;left:44vw;top:7vh;animation:float1 33s ease-in-out infinite reverse;opacity:.3}
+@keyframes float1{0%,100%{transform:translate(0,0) rotate(-18deg)}50%{transform:translate(5vw,-8vh) rotate(16deg)}}
+@keyframes float2{0%,100%{transform:translate(0,0) rotate(24deg)}50%{transform:translate(-6vw,9vh) rotate(-14deg)}}
+@keyframes float3{0%,100%{transform:translate(0,0) rotate(8deg)}50%{transform:translate(-7vw,-7vh) rotate(-22deg)}}
+
+/* райдужний перелив поверх тла */
+.sheen{position:absolute;inset:-25%;opacity:.16;mix-blend-mode:overlay;
+  background:conic-gradient(from 0deg,#00E5FF,#8B5CF6,#E040FB,#22D3EE,#00E5FF);
+  filter:blur(70px);animation:spin 36s linear infinite;will-change:transform}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* легке зерно, щоб градієнти не бендились на великому екрані */
+.grain{position:absolute;inset:0;opacity:.16;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+
+/* ---------- Каркас ---------- */
+.wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;
+  padding:clamp(18px,2.2vh,36px) clamp(24px,2.6vw,64px) clamp(14px,1.8vh,28px)}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:24px;flex:0 0 auto}
+.brand{display:flex;align-items:center;gap:clamp(12px,1.1vw,22px)}
+.brand svg{width:clamp(38px,3.2vw,60px);height:auto;color:var(--cobalt);
+  filter:drop-shadow(0 0 22px rgba(0,229,255,.45))}
+.brand .name{font-family:'Space Grotesk',sans-serif;line-height:1}
+.brand .name b{display:block;font-size:clamp(20px,1.9vw,36px);font-weight:700;letter-spacing:-.02em}
+.brand .name span{display:block;font-size:clamp(11px,.82vw,15px);font-weight:500;
+  letter-spacing:.42em;text-transform:uppercase;color:var(--cobalt);opacity:.9;margin-top:.35em}
+
+.clock{text-align:right;font-family:'Space Grotesk',sans-serif}
+.clock .time{font-size:clamp(28px,3.2vw,60px);font-weight:700;line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;text-shadow:0 0 40px rgba(0,229,255,.25)}
+.clock .date{font-family:'Inter',sans-serif;font-size:clamp(11px,.85vw,16px);color:var(--muted);
+  margin-top:.5em;text-transform:capitalize}
+
+/* ---------- Заголовки колонок ---------- */
+.legend{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:clamp(10px,1vw,22px);
+  padding:clamp(12px,1.4vh,22px) var(--pad) clamp(6px,.7vh,10px);flex:0 0 auto}
+.legend div:nth-child(n+2){text-align:center}
+.legend span{display:inline-block;padding:.42em 1.25em;border-radius:999px;
+  font-size:clamp(12px,1.02vw,21px);letter-spacing:.26em;text-transform:uppercase;
+  font-weight:600;color:#F3F5F9;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 18px rgba(0,0,0,.3);
+  text-shadow:0 0 18px rgba(255,255,255,.25)}
+.legend div:nth-child(3) span{color:#D6FAFF;border-color:rgba(0,229,255,.28);
+  background:rgba(0,229,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 22px rgba(0,229,255,.2)}
+
+/* ---------- Картки курсів ---------- */
+/* --n = скільки валют на екрані; --rowh = висота однієї картки.
+   Через них масштабуємо шрифти: більше валют — дрібніше, і все влазить без прокрутки. */
+main{flex:1 1 auto;display:flex;flex-direction:column;gap:clamp(9px,1.2vh,18px);min-height:0;
+  --n:3;--rowh:calc(64vh / var(--n))}
+
+.row{position:relative;flex:1 1 0;min-height:0;
+  display:grid;grid-template-columns:1.25fr 1fr 1fr;align-items:center;
+  gap:clamp(10px,1vw,22px);padding:clamp(8px,1.2vh,24px) var(--pad);
+  border-radius:var(--r);border:none;
+  background:var(--glass-bg);
+  -webkit-backdrop-filter:var(--glass-fx);
+  backdrop-filter:var(--glass-fx);
+  /* Край скла показуємо заломленням, а не обведенням: м'яке світло вздовж верхньої
+     кромки, затемнення знизу і глибока тінь під карткою. Жодних чітких ліній. */
+  box-shadow:0 26px 70px rgba(0,0,0,.55),
+             inset 0 2px 18px rgba(255,255,255,.16),
+             inset 0 -18px 40px rgba(0,0,0,.22);
+  overflow:hidden;
+  animation:rise .6s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}}
+
+/* Ніяких обведень: лише м'яке світло, що збирається вздовж верхньої кромки скла. */
+.edge{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 1px 16px rgba(255,255,255,.15)}
+.row.pulse .edge{animation:edgeGlow 1.2s ease-out}
+@keyframes edgeGlow{
+  0%,100%{box-shadow:inset 0 1px 16px rgba(255,255,255,.15)}
+  40%{box-shadow:inset 0 1px 16px rgba(255,255,255,.3),inset 0 0 70px rgba(0,229,255,.2)}
+}
+
+/* тонкий відблиск уздовж самого верху — так світло лягає на опукле скло */
+.row::before{content:'';position:absolute;left:5%;right:5%;top:0;height:16%;pointer-events:none;
+  border-radius:0 0 50% 50%/0 0 100% 100%;
+  background:linear-gradient(180deg,rgba(255,255,255,.13),transparent)}
+
+/* блік, що пливе по склу; під час «показу» пробігає швидко */
+.row::after{content:'';position:absolute;top:0;left:-60%;width:45%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);
+  transform:skewX(-18deg);animation:sweep 9s ease-in-out infinite;pointer-events:none}
+.row:nth-child(2)::after{animation-delay:1.2s}
+.row:nth-child(3)::after{animation-delay:2.4s}
+.row:nth-child(4)::after{animation-delay:3.6s}
+.row:nth-child(5)::after{animation-delay:4.8s}
+@keyframes sweep{0%,72%{left:-60%}100%{left:130%}}
+.row.pulse::after{animation:sweep 1.1s ease-out}
+
+.cur{display:flex;align-items:center;gap:clamp(10px,.9vw,20px);min-width:0}
+/* Значок валюти — символом, а не emoji: прапорці на ТВ-браузерах часто не малюються */
+.badge{flex:0 0 auto;display:grid;place-items:center;
+  width:min(clamp(34px,3.6vw,76px),calc(var(--rowh) * .58));
+  height:min(clamp(34px,3.6vw,76px),calc(var(--rowh) * .58));border-radius:50%;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;
+  font-size:min(clamp(15px,1.8vw,36px),calc(var(--rowh) * .26));line-height:1;color:var(--platinum);
+  border:none;
+  background:radial-gradient(115% 115% at 28% 18%,rgba(255,255,255,.5),rgba(255,255,255,.08) 42%,
+             rgba(255,255,255,.02) 62%),
+             var(--tint,rgba(0,229,255,.14));
+  -webkit-backdrop-filter:var(--badge-fx);backdrop-filter:var(--badge-fx);
+  box-shadow:inset 0 2px 8px rgba(255,255,255,.4),
+             inset 0 -6px 14px rgba(0,0,0,.3),
+             0 10px 26px rgba(0,0,0,.4),
+             0 0 26px var(--glow,rgba(0,229,255,.28))}
+.cur .txt{min-width:0}
+.code{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.01em;
+  font-size:min(clamp(19px,2.6vw,54px),calc(var(--rowh) * .40));line-height:1.05}
+.title{font-size:min(clamp(10px,.85vw,17px),calc(var(--rowh) * .13));color:var(--muted);margin-top:.25em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main.dense .title{display:none}          /* від 7 валют підпис прибираємо — місця мало */
+
+.val{position:relative;text-align:center;font-family:'Space Grotesk',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;line-height:1;
+  font-size:min(clamp(22px,3.3vw,70px),calc(var(--rowh) * .52));
+  letter-spacing:-.02em;transition:color .4s;white-space:nowrap}
+.val.long{font-size:min(clamp(17px,2.2vw,46px),calc(var(--rowh) * .36))}
+.val.buy{color:#fff;text-shadow:0 0 30px rgba(255,255,255,.18)}
+.val.sell{color:var(--cobalt);text-shadow:0 0 34px rgba(0,229,255,.42)}
+.val.rolling{color:var(--cobalt);opacity:.85;filter:blur(.4px)}
+
+.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%{transform:scale(1.1);filter:brightness(1.9)}100%{transform:scale(1);filter:brightness(1)}}
+.arrow{position:absolute;font-size:.42em;margin-left:.25em;opacity:0;animation:fadeArrow 3.2s ease-out forwards}
+.arrow.up{color:var(--up)} .arrow.down{color:var(--down)}
+@keyframes fadeArrow{0%{opacity:0;transform:translateY(6px)}18%{opacity:1;transform:translateY(0)}100%{opacity:0}}
+
+/* ======================================================================
+   Бігучий рядок зі скляною лінзою по центру
+   ====================================================================== */
+.ticker{position:relative;flex:0 0 auto;margin-top:clamp(10px,1.4vh,20px);
+  height:clamp(52px,6.4vh,104px);border-radius:999px;
+  border:none;background:var(--glass-bg);
+  -webkit-backdrop-filter:var(--glass-fx);backdrop-filter:var(--glass-fx);
+  box-shadow:0 20px 50px rgba(0,0,0,.5),
+             inset 0 2px 16px rgba(255,255,255,.14),
+             inset 0 -12px 26px rgba(0,0,0,.2)}
+
+.tclip{position:absolute;inset:0;overflow:hidden;border-radius:inherit;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+
+.track{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;
+  gap:clamp(26px,2.6vw,56px);width:max-content;padding-left:clamp(26px,2.6vw,56px);
+  animation:run 46s linear infinite;will-change:transform}
+@keyframes run{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.tick{display:flex;align-items:baseline;gap:.5em;font-family:'Space Grotesk',sans-serif;
+  font-size:clamp(15px,1.5vw,32px);font-weight:700;white-space:nowrap}
+.tick .t-name{color:#A8AEC0;font-weight:500;letter-spacing:.06em}
+.tick .t-val{color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,255,255,.2)}
+.tick .t-chg{font-size:.72em;font-weight:600}
+.tick .t-chg.up{color:var(--up)} .tick .t-chg.down{color:var(--down)}
+.tick .t-dot{color:var(--cobalt);opacity:.5}
+
+/* сама лінза: збільшена копія рядка + опукле скло зверху */
+.lens{position:absolute;left:50%;top:50%;width:var(--lens-w);height:var(--lens-h);
+  transform:translate(-50%,-50%);border-radius:var(--lens-r);overflow:hidden;pointer-events:none;
+  border:none;
+  box-shadow:0 26px 64px rgba(0,0,0,.6),
+             inset 0 2px 14px rgba(255,255,255,.3),
+             inset 0 -14px 32px rgba(0,0,0,.42);
+  /* Сильне заломлення знизу: текст під лінзою вигинається до нечитабельного,
+     тому дублікату не видно, а зверху лягає чітка збільшена копія. */
+  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,rgba(255,255,255,.07)),
+             rgba(22,19,34,.8);
+  -webkit-backdrop-filter:var(--lens-fx);backdrop-filter:var(--lens-fx)}
+/* stage повторює геометрію рядка й масштабується від центру лінзи */
+.stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1.5);
+  transform-origin:center;overflow:hidden}
+/* хроматична кайма — щоб скло виглядало «справжнім» */
+/* заломлення по краю лінзи — м'яке світло й ледь помітна хроматика, без обведення */
+.lens .fringe{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 3px 18px rgba(255,255,255,.26),
+             inset 7px 0 26px rgba(0,229,255,.12),
+             inset -7px 0 26px rgba(224,64,251,.12),
+             inset 0 -8px 22px rgba(0,0,0,.3)}
+.lens .glare{position:absolute;left:5%;top:7%;width:62%;height:30%;border-radius:999px;
+  background:linear-gradient(160deg,rgba(255,255,255,.5),rgba(255,255,255,0) 72%);
+  filter:blur(3px);pointer-events:none}
+
+/* ---------- Підвал ---------- */
+footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding-top:clamp(10px,1.2vh,18px);font-size:clamp(11px,.9vw,17px);color:var(--muted)}
+.upd{display:flex;align-items:center;gap:.6em}
+.dot{width:.6em;height:.6em;border-radius:50%;background:var(--up);
+  box-shadow:0 0 12px var(--up);animation:pulse 2.4s ease-in-out infinite}
+.dot.stale{background:var(--down);box-shadow:0 0 12px var(--down);animation:none}
+@keyframes pulse{50%{opacity:.35}}
+.note{letter-spacing:.22em;text-transform:uppercase;opacity:.75}
+
+/* ---------- Кнопка запуску музики ---------- */
+#start{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+  background:rgba(10,10,12,.72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);cursor:pointer}
+#start.show{display:flex}
+#start .btn{display:flex;align-items:center;gap:18px;padding:26px 46px;border-radius:999px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  font-family:'Space Grotesk',sans-serif;font-size:clamp(18px,1.7vw,30px);font-weight:700;
+  box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.35);
+  animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.04)}}
+#start .play{width:1.5em;height:1.5em;border-radius:50%;background:var(--cobalt);color:#04141a;
+  display:grid;place-items:center;font-size:.8em;box-shadow:0 0 30px rgba(0,229,255,.6)}
+
+#yt{position:fixed;width:1px;height:1px;opacity:.001;pointer-events:none;bottom:0;left:0}
+
+/* ---------- Полегшений режим для слабких ТВ-браузерів (?lite=1) ---------- */
+.lite .blob,.lite .sheen,.lite .shard,.lite .row::after,.lite #start .btn{animation:none}
+.lite .row{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.07)}
+.lite .ticker{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.07)}
+.lite .grain{display:none}
+
+@media (max-width:900px){
+  .legend,.row{grid-template-columns:1.1fr 1fr 1fr}
+  .title{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .blob,.sheen,.shard,.row::after,.dot,#start .btn,.track{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- Фільтри заломлення: шум -> карта зміщення. Саме це «гне» фон за склом. -->
+<svg class="filters" aria-hidden="true" focusable="false">
+  <filter id="refract" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.004 0.009" numOctaves="2" seed="11" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="4" result="ns"/>
+    <feDisplacementMap in="SourceGraphic" in2="ns" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="refract-lens" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="5" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="3" result="ns"/>
+    <feDisplacementMap in="SourceGraphic" in2="ns" scale="44" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="bg">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+  <div class="shard s1"></div><div class="shard s2"></div><div class="shard s3"></div>
+  <div class="shard s4"></div><div class="shard s5"></div>
+  <div class="sheen"></div><div class="grain"></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <!-- логотип із брендбуку -->
+      <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M50 0L100 25V95L50 120L0 95V25L50 0Z" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="2"/>
+        <path d="M25 40L50 55L50 95L25 80Z" fill="none" stroke="#E5E7EB" stroke-width="6" stroke-linejoin="miter"/>
+        <path d="M50 55L75 40L75 80L50 95Z" fill="none" stroke="#E5E7EB" stroke-width="6" stroke-linejoin="miter"/>
+        <path d="M50 20V55" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div class="name"><b>meta transfer</b><span>обмін валют</span></div>
+    </div>
+    <div class="clock">
+      <div class="time" id="clock">--:--</div>
+      <div class="date" id="date">&nbsp;</div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <div><span>Валюта</span></div><div><span>Купівля</span></div><div><span>Продаж</span></div>
+  </div>
+
+  <main id="rows"></main>
+
+  <div class="ticker" id="ticker">
+    <div class="tclip"><div class="track" id="track1"></div></div>
+    <div class="lens">
+      <div class="stage" id="stage"><div class="track" id="track2"></div></div>
+      <span class="fringe"></span><span class="glare"></span>
+    </div>
+  </div>
+
+  <footer>
+    <div class="upd"><span class="dot" id="dot"></span>Оновлено о <span id="upd">--:--</span></div>
+    <div class="note">курси інформаційні • уточнюйте в касі</div>
+  </footer>
+</div>
+
+<div id="start"><div class="btn"><span class="play">▶</span> Натисніть будь-яку кнопку — увімкнути музику</div></div>
+<div id="yt"></div>
+
+<script>
+/* ====================================================================
+   1. Налаштування
+   ==================================================================== */
+const REFRESH_MS  = 30000;   // як часто перечитувати rates.json
+const MARKET_MS   = 180000;  // як часто оновлювати бігучий рядок (3 хв)
+const SHOWCASE_MS = 15000;   // раз на скільки «перекручувати» цифри
+const VOLUME      = 25;      // гучність фонової музики, 0..100
+
+const params   = new URLSearchParams(location.search);
+const MUSIC_ON = params.get('nomusic') !== '1';
+if(params.get('lite') === '1') document.body.classList.add('lite');
+
+/* s — символ у кружечку, n — підпис, c — колір підсвітки */
+const META = {
+  USD :{s:'$', n:'Долар США',           c:'52,211,153'},
+  EUR :{s:'€', n:'Євро',                c:'139,92,246'},
+  USDT:{s:'₮', n:'Tether USDT',         c:'0,229,255'},
+  PLN :{s:'zł',n:'Польський злотий',    c:'251,113,133'},
+  GBP :{s:'£', n:'Фунт стерлінгів',     c:'96,165,250'},
+  CHF :{s:'₣', n:'Швейцарський франк',  c:'248,113,113'},
+  CZK :{s:'Kč',n:'Чеська крона',        c:'129,140,248'},
+  CAD :{s:'C$',n:'Канадський долар',    c:'244,114,182'},
+  HUF :{s:'Ft',n:'Угорський форинт',    c:'45,212,191'},
+  RON :{s:'L', n:'Румунський лей',      c:'251,191,36'},
+  MDL :{s:'L', n:'Молдовський лей',     c:'56,189,248'},
+  TRY :{s:'₺', n:'Турецька ліра',       c:'239,68,68'},
+  SEK :{s:'kr',n:'Шведська крона',      c:'125,211,252'},
+  NOK :{s:'kr',n:'Норвезька крона',     c:'167,139,250'},
+  BTC :{s:'₿', n:'Bitcoin',             c:'251,146,60'},
+  ETH :{s:'Ξ', n:'Ethereum',            c:'165,180,252'}
+};
+
+const rowsEl = document.getElementById('rows');
+const updEl  = document.getElementById('upd');
+const dotEl  = document.getElementById('dot');
+let previous = {};                 // попередні значення — щоб анімувати зміну
+let currentVideo = null, currentList = null;
+
+/* ---------- годинник ---------- */
+function tick(){
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('date').textContent =
+    now.toLocaleDateString('uk-UA',{weekday:'long',day:'numeric',month:'long'});
+}
+tick(); setInterval(tick,20000);
+
+/* ====================================================================
+   2. «Перекручування» цифр — як на механічному табло
+   ==================================================================== */
+const DIGITS = '0123456789';
+
+function roll(el, finalText, delay){
+  if(el.dataset.rolling === '1') return;
+  const target = String(finalText);
+  const chars  = target.split('');
+  const hasDigits = /\d/.test(target);
+  if(!hasDigits){ el.textContent = target; return; }
+
+  el.dataset.rolling = '1';
+  setTimeout(()=>{
+    el.classList.add('rolling');
+    let frame = 0;
+    const spins = 16;                       // скільки кадрів крутиться
+    const timer = setInterval(()=>{
+      frame++;
+      el.textContent = chars.map((ch,i)=>{
+        if(!/\d/.test(ch)) return ch;       // «%», «.», «+», «-» лишаються на місці
+        // цифри зупиняються по черзі — зліва направо
+        return frame >= spins*0.45 + i*2 ? ch : DIGITS[Math.random()*10|0];
+      }).join('');
+      if(frame >= spins + chars.length*2){
+        clearInterval(timer);
+        el.textContent = target;
+        el.classList.remove('rolling');
+        el.dataset.rolling = '0';
+        if(el.dataset.arrow){                // стрілку повертаємо після прокрутки
+          const arrow = document.createElement('span');
+          arrow.className = 'arrow ' + el.dataset.arrow;
+          arrow.textContent = el.dataset.arrow === 'up' ? '▲' : '▼';
+          el.appendChild(arrow);
+          el.dataset.arrow = '';
+        }
+      }
+    }, 45);
+  }, delay || 0);
+}
+
+/* раз на SHOWCASE_MS проганяємо всі значення + хвиля блиску по картках */
+function showcase(){
+  const rows = [...rowsEl.children];
+  rows.forEach((row,index)=>{
+    setTimeout(()=>{
+      row.classList.add('pulse');
+      setTimeout(()=>row.classList.remove('pulse'),1300);
+    }, index*120);
+    row.querySelectorAll('.val').forEach((el,col)=>{
+      roll(el, el.dataset.value || el.textContent, index*120 + col*70);
+    });
+  });
+}
+setInterval(showcase, SHOWCASE_MS);
+
+/* ====================================================================
+   3. Курси з rates.json
+   ==================================================================== */
+function render(data){
+  const list = Array.isArray(data.rates) ? data.rates.slice(0,10) : [];
+  const codes = list.map(item=>String(item.code||'').toUpperCase()).join(',');
+  const rebuild = codes !== rowsEl.dataset.codes;
+
+  // від кількості валют залежать висота картки й розмір шрифтів
+  rowsEl.style.setProperty('--n', Math.max(list.length,1));
+  rowsEl.classList.toggle('dense', list.length > 6);
+
+  if(rebuild){
+    rowsEl.innerHTML = '';
+    rowsEl.dataset.codes = codes;
+    list.forEach((item,index)=>{
+      const code = String(item.code||'').toUpperCase();
+      const meta = META[code] ||
+        (code.includes('/') ? {s:'⇄', n:'Крос-курс', c:'167,139,250'}
+                            : {s:code.slice(0,2), n:'Валюта', c:'229,231,235'});
+      const row  = document.createElement('section');
+      row.className = 'row';
+      row.style.animationDelay = (index*0.09)+'s';
+      row.innerHTML =
+        '<span class="edge"></span>'+
+        '<div class="cur"><span class="badge" style="--tint:rgba('+meta.c+',.20);--glow:rgba('+meta.c+',.35)">'+
+          meta.s+'</span><div class="txt">'+
+          '<div class="code">'+code+'</div><div class="title">'+meta.n+'</div></div></div>'+
+        '<div class="val buy"  data-k="'+code+'-b"></div>'+
+        '<div class="val sell" data-k="'+code+'-s"></div>';
+      rowsEl.appendChild(row);
+    });
+  }
+
+  list.forEach((item,index)=>{
+    const code = String(item.code||'').toUpperCase();
+    put(code+'-b', item.buy,  index*110, rebuild);
+    put(code+'-s', item.sell, index*110 + 70, rebuild);
+  });
+
+  updEl.textContent = data.updated_at || '--:--';
+}
+
+/* ставимо значення: нове або змінене — з прокруткою, решта — мовчки */
+function put(key, value, delay, force){
+  const el = rowsEl.querySelector('[data-k="'+key+'"]');
+  if(!el) return;
+  const text = String(value == null ? '—' : value);
+  el.classList.toggle('long', text.length > 6);
+
+  const changed = el.dataset.value !== text;
+  el.dataset.value = text;
+  if(!changed && !force) return;
+
+  const before = previous[key], now = parseFloat(text.replace(',','.'));
+  if(before !== undefined && !isNaN(now) && !isNaN(before) && before !== now){
+    el.dataset.arrow = now > before ? 'up' : 'down';
+    el.classList.add('flash');
+    setTimeout(()=>el.classList.remove('flash'),1700);
+  }
+  if(!isNaN(now)) previous[key] = now;
+
+  roll(el, text, delay);
+}
+
+async function load(){
+  try{
+    const resp = await fetch('rates.json?t='+Date.now(),{cache:'no-store'});
+    if(!resp.ok) throw new Error(resp.status);
+    const data = await resp.json();
+    render(data);
+    if(Array.isArray(data.ticker)) customTicks = data.ticker;
+    dotEl.classList.remove('stale');
+    syncMusic(data);
+  }catch(err){
+    // Мережа впала або файл недоступний — лишаємо на екрані останні курси.
+    dotEl.classList.add('stale');
+    console.warn('rates.json:', err);
+  }
+}
+load(); setInterval(load, REFRESH_MS);
+
+/* ====================================================================
+   4. Бігучий рядок: біржа + крипта + індекс долара
+   ==================================================================== */
+const track1 = document.getElementById('track1');
+const track2 = document.getElementById('track2');
+const stage  = document.getElementById('stage');
+let market = [];        // те, що прийшло з API
+let customTicks = [];   // довільні рядки з rates.json (поле "ticker")
+
+function num(value, digits){
+  return Number(value).toLocaleString('uk-UA',
+    {minimumFractionDigits:digits, maximumFractionDigits:digits});
+}
+
+/* Курси USD→інші. Пробуємо два джерела: якщо перше не відповіло — беремо друге. */
+async function fetchFx(){
+  try{
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD');
+    if(resp.ok){
+      const data = await resp.json();
+      if(data && data.rates) return data.rates;
+    }
+  }catch(err){ console.warn('er-api:', err); }
+
+  try{
+    const resp = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
+    if(resp.ok){
+      const data = await resp.json();
+      const raw = data && data.usd;
+      if(raw){
+        const out = {};
+        for(const key in raw) out[key.toUpperCase()] = raw[key];
+        return out;
+      }
+    }
+  }catch(err){ console.warn('currency-api:', err); }
+
+  return null;
+}
+
+async function loadMarket(){
+  const next = [];
+
+  // крипта — CoinGecko (безкоштовно, без ключа)
+  try{
+    const resp = await fetch('https://api.coingecko.com/api/v3/simple/price'+
+      '?ids=bitcoin,ethereum,tether&vs_currencies=usd&include_24hr_change=true');
+    if(resp.ok){
+      const data = await resp.json();
+      if(data.bitcoin)  next.push({n:'BTC/USD', v:'$'+num(data.bitcoin.usd,0),  c:data.bitcoin.usd_24h_change});
+      if(data.ethereum) next.push({n:'ETH/USD', v:'$'+num(data.ethereum.usd,0), c:data.ethereum.usd_24h_change});
+      if(data.tether)   next.push({n:'USDT',    v:'$'+num(data.tether.usd,3),   c:data.tether.usd_24h_change});
+    }
+  }catch(err){ console.warn('coingecko:', err); }
+
+  // валютні пари — два джерела поспіль, обидва безкоштовні й без ключа
+  try{
+    const rate = await fetchFx();
+    if(rate){
+      if(rate.EUR) next.push({n:'EUR/USD', v:num(1/rate.EUR,4)});
+      if(rate.GBP) next.push({n:'GBP/USD', v:num(1/rate.GBP,4)});
+      if(rate.JPY) next.push({n:'USD/JPY', v:num(rate.JPY,2)});
+      if(rate.PLN) next.push({n:'USD/PLN', v:num(rate.PLN,3)});
+      if(rate.UAH) next.push({n:'USD/UAH', v:num(rate.UAH,2)});
+
+      // Індекс долара DXY — офіційна формула кошика з шести валют
+      if(rate.EUR && rate.JPY && rate.GBP && rate.CAD && rate.SEK && rate.CHF){
+        const dxy = 50.14348112
+          * Math.pow(1/rate.EUR,-0.576) * Math.pow(rate.JPY,0.136)
+          * Math.pow(1/rate.GBP,-0.119) * Math.pow(rate.CAD,0.091)
+          * Math.pow(rate.SEK,0.042)    * Math.pow(rate.CHF,0.036);
+        next.unshift({n:'DXY', v:num(dxy,2)});
+      }
+    }
+  }catch(err){ console.warn('fx:', err); }
+
+  if(next.length) market = next;      // не вдалося — лишаємо попередні дані
+  buildTicker();
+}
+
+function tickHTML(item){
+  let chg = '';
+  if(typeof item.c === 'number' && isFinite(item.c)){
+    chg = '<span class="t-chg '+(item.c>=0?'up':'down')+'">'+
+          (item.c>=0?'▲':'▼')+Math.abs(item.c).toFixed(2)+'%</span>';
+  }
+  return '<span class="tick"><span class="t-name">'+item.n+'</span>'+
+         '<span class="t-val">'+item.v+'</span>'+chg+
+         '<span class="t-dot">•</span></span>';
+}
+
+function buildTicker(){
+  const items = customTicks.concat(market);
+  if(!items.length) return;
+  // подвоюємо вміст — так рядок біжить безшовно по колу
+  const html = items.map(tickHTML).join('') + items.map(tickHTML).join('');
+  track1.innerHTML = html;
+  track2.innerHTML = html;
+  syncStage();
+  // перезапускаємо обидві доріжки в одному кадрі, щоб лінза не «поїхала»
+  [track1,track2].forEach(t=>{ t.style.animation='none'; void t.offsetWidth; });
+  requestAnimationFrame(()=>[track1,track2].forEach(t=>{ t.style.animation=''; }));
+}
+
+/* копія рядка всередині лінзи має точно збігатися з оригіналом за геометрією */
+function syncStage(){
+  const box = document.getElementById('ticker').getBoundingClientRect();
+  stage.style.width  = box.width+'px';
+  stage.style.height = box.height+'px';
+}
+window.addEventListener('resize', ()=>{ syncStage(); });
+
+loadMarket(); setInterval(loadMarket, MARKET_MS);
+
+/* ====================================================================
+   5. Фонова музика з YouTube
+   ==================================================================== */
+let player = null, ready = false;
+
+function syncMusic(data){
+  if(!MUSIC_ON) return;
+  const video = data.youtube_id || null;
+  const list  = data.playlist_id || null;
+  if(video === currentVideo && list === currentList) return;
+  currentVideo = video; currentList = list;
+
+  if(!ready){ bootPlayer(); return; }
+  if(list) player.loadPlaylist({list:list, listType:'playlist'});
+  else if(video) player.loadVideoById(video);
+}
+
+function bootPlayer(){
+  if(window.YT && window.YT.Player){ createPlayer(); return; }
+  if(document.getElementById('yt-api')) return;         // скрипт вже вантажиться
+  const tag = document.createElement('script');
+  tag.id = 'yt-api'; tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = createPlayer;
+
+function createPlayer(){
+  if(player || (!currentVideo && !currentList)) return;
+  player = new YT.Player('yt',{
+    height:'1', width:'1',
+    videoId: currentVideo || undefined,
+    playerVars:{autoplay:1, controls:0, disablekb:1, playsinline:1,
+                list: currentList || undefined,
+                listType: currentList ? 'playlist' : undefined,
+                loop:1, playlist: currentList ? undefined : currentVideo},
+    events:{
+      onReady:(e)=>{
+        ready = true;
+        e.target.setVolume(VOLUME);
+        e.target.playVideo();
+        setTimeout(checkPlayback, 1800);   // браузери блокують звук без кліку
+      },
+      onStateChange:(e)=>{
+        if(e.data === YT.PlayerState.ENDED && !currentList){
+          e.target.seekTo(0); e.target.playVideo();     // безшовний цикл
+        }
+        if(e.data === YT.PlayerState.PLAYING) hideStart();
+      },
+      onError:()=>{ console.warn('YouTube: відео недоступне'); }
+    }
+  });
+}
+
+const startEl = document.getElementById('start');
+function checkPlayback(){
+  if(!player || !player.getPlayerState) return;
+  const state = player.getPlayerState();
+  const muted = player.isMuted && player.isMuted();
+  if(state !== YT.PlayerState.PLAYING || muted) startEl.classList.add('show');
+}
+function hideStart(){ startEl.classList.remove('show'); }
+
+/* Звук браузер дозволяє лише після дії людини. На телевізорі миші немає,
+   тому ловимо будь-що: клік, дотик і будь-яку кнопку пульта. */
+function startMusic(){
+  if(!MUSIC_ON) return;
+  if(!player){ bootPlayer(); return; }
+  try{ player.unMute(); player.setVolume(VOLUME); player.playVideo(); }catch(err){}
+  hideStart();
+}
+['click','touchstart','keydown','pointerdown'].forEach(event=>{
+  document.addEventListener(event, startMusic, {passive:true});
+});
+
+/* Не даємо ТВ-браузеру заснути на статичній сторінці */
+if('wakeLock' in navigator){
+  const keepAwake = ()=>navigator.wakeLock.request('screen').catch(()=>{});
+  keepAwake();
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) keepAwake(); });
+}
+</script>
+</body>
+</html>
